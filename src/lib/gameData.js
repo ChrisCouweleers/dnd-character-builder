@@ -22,6 +22,7 @@ export const RACES = {
     "rock-gnome": { label: "Rock Gnome", abilityBonuses: { constitution: 1 }, traits: ["Artificer's Lore", "Tinker"] }
   }},
   dragonborn: { label: "Dragonborn", speed: 30, abilityBonuses: { strength: 2, charisma: 1 }, traits: ["Draconic Ancestry", "Breath Weapon", "Damage Resistance"], autoProficiencies: [] },
+  custom: { label: "Custom", speed: 30, abilityBonuses: {}, traits: [], autoProficiencies: [], isCustom: true },
 };
 
 // ─── CLASSES ────────────────────────────────────────────────────
@@ -84,4 +85,10 @@ export const rollDice = (sides, count = 1) => {
 export const roll4d6DropLowest = () => {
   const rolls = rollDice(6, 4).sort((a, b) => b - a);
   return { rolls, total: rolls[0] + rolls[1] + rolls[2], dropped: rolls[3] };
+};
+
+// 5e HP calculation: hitDie + CON mod at level 1, average roll + CON mod per level after
+export const calcHP = (hitDie, conMod, level) => {
+  const avgRoll = Math.floor(hitDie / 2) + 1;
+  return Math.max(1, hitDie + conMod + (level - 1) * Math.max(1, avgRoll + conMod));
 };
