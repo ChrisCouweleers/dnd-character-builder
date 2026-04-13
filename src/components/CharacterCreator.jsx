@@ -28,6 +28,12 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
     playerName: "",
   })
 
+  const [customRaceBonuses, setCustomRaceBonuses] = useState({ strength: 0, dexterity: 0, constitution: 0, intelligence: 0, wisdom: 0, charisma: 0 })
+  const [customRaceName, setCustomRaceName] = useState(editChar?.race === 'custom' ? (editChar.subrace || '') : '')
+  const customBonusTotal = Object.values(customRaceBonuses).reduce((s, v) => s + v, 0)
+  const CUSTOM_BONUS_BUDGET = 3
+  const CUSTOM_BONUS_MAX_PER = 2
+
   const updateChar = (updates) => setChar(prev => ({ ...prev, ...updates }))
   const updateAbility = (ability, value) => {
     const v = Math.max(1, Math.min(30, parseInt(value) || 0))
@@ -71,6 +77,7 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
   }, [char.race, char.background, char.className])
 
   const getRaceBonus = (ability) => {
+    if (char.race === 'custom') return customRaceBonuses[ability] || 0
     let bonus = 0
     if (raceData.abilityBonuses?.[ability]) bonus += raceData.abilityBonuses[ability]
     if (subraceData?.abilityBonuses?.[ability]) bonus += subraceData.abilityBonuses[ability]
@@ -105,7 +112,7 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
   const computeHP = () => Math.max(1, classData.hitDie + calcMod(getTotalAbility("constitution")))
 
   const handleSave = () => {
-    const speed = subraceData?.speed || raceData.speed
+    const speed = char.race === 'custom' ? raceData.speed : (subraceData?.speed || raceData.speed)
     const finalScores = {}
     ABILITIES.forEach(a => { finalScores[a] = getTotalAbility(a) })
     const hp = Math.max(1, classData.hitDie + calcMod(finalScores.constitution))
@@ -113,6 +120,7 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
 
     onSave({
       ...char,
+      subrace: char.race === 'custom' ? customRaceName : char.subrace,
       abilityScores: finalScores,
       hitPoints: { max: hp, current: hp, temporary: 0 },
       armorClass: ac,
@@ -148,7 +156,11 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
             </div>
             <div className="form-group">
               <label className="form-label">Race</label>
-              <select className="form-select" value={char.race} onChange={e => updateChar({ race: e.target.value, subrace: "" })}>
+              <select className="form-select" value={char.race} onChange={e => {
+                const newRace = e.target.value
+                updateChar({ race: newRace, subrace: "" })
+                if (newRace !== 'custom') setCustomRaceBonuses({ strength: 0, dexterity: 0, constitution: 0, intelligence: 0, wisdom: 0, charisma: 0 })
+              }}>
                 {Object.entries(RACES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
@@ -160,6 +172,29 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
                   {Object.entries(raceData.subraces).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
               </div>
+            )}
+            {char.race === 'custom' && (
+              <>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label className="form-label">Custom Race Name</label>
+                  <input className="form-input" value={customRaceName} onChange={e => setCustomRaceName(e.target.value)} placeholder="e.g. Aasimar, Tabaxi, Kenku..." maxLength={30} />
+                </div>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label className="form-label">Racial Ability Bonuses <span style={{ fontWeight: 400, color: "var(--ink-ghost)" }}>({customBonusTotal}/{CUSTOM_BONUS_BUDGET} points used, max +{CUSTOM_BONUS_MAX_PER} each)</span></label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "8px" }}>
+                    {ABILITIES.map(ability => (
+                      <div key={ability} style={{ textAlign: "center", padding: "8px", background: "var(--parchment)", borderRadius: "var(--radius)", border: customRaceBonuses[ability] > 0 ? "1px solid var(--gold)" : "1px solid var(--parchment-deep)" }}>
+                        <div style={{ fontFamily: "'Cinzel', serif", fontSize: "11px", fontWeight: 600, letterSpacing: "1px", color: "var(--ink-ghost)", marginBottom: "4px" }}>{ABILITY_SHORT[ability]}</div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}>
+                          <button className="btn btn-secondary btn-sm" style={{ padding: "2px 6px", fontSize: "14px", lineHeight: 1 }} onClick={() => setCustomRaceBonuses(prev => ({ ...prev, [ability]: Math.max(0, prev[ability] - 1) }))} disabled={customRaceBonuses[ability] <= 0}>−</button>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "16px", fontWeight: 600, minWidth: "24px", color: customRaceBonuses[ability] > 0 ? "var(--gold)" : "var(--ink-ghost)" }}>+{customRaceBonuses[ability]}</span>
+                          <button className="btn btn-secondary btn-sm" style={{ padding: "2px 6px", fontSize: "14px", lineHeight: 1 }} onClick={() => setCustomRaceBonuses(prev => ({ ...prev, [ability]: Math.min(CUSTOM_BONUS_MAX_PER, prev[ability] + 1) }))} disabled={customRaceBonuses[ability] >= CUSTOM_BONUS_MAX_PER || customBonusTotal >= CUSTOM_BONUS_BUDGET}>+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
             <div className="form-group">
               <label className="form-label">Class</label>
@@ -186,7 +221,10 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
             <div style={{ padding: "12px", background: "var(--parchment)", borderRadius: "var(--radius)", border: "1px solid var(--parchment-deep)" }}>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: "11px", fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "var(--ink-ghost)", marginBottom: "4px" }}>Race Traits</div>
               <div style={{ fontSize: "14px", color: "var(--ink-faded)" }}>
-                Speed {subraceData?.speed || raceData.speed}ft • {[...(raceData.traits || []), ...(subraceData?.traits || [])].join(", ")}
+                {char.race === 'custom'
+                  ? `Speed ${raceData.speed}ft • Custom bonuses: ${ABILITIES.filter(a => customRaceBonuses[a] > 0).map(a => `+${customRaceBonuses[a]} ${ABILITY_SHORT[a]}`).join(', ') || 'None assigned'}`
+                  : `Speed ${subraceData?.speed || raceData.speed}ft • ${[...(raceData.traits || []), ...(subraceData?.traits || [])].join(", ")}`
+                }
               </div>
             </div>
             <div style={{ padding: "12px", background: "var(--parchment)", borderRadius: "var(--radius)", border: "1px solid var(--parchment-deep)" }}>
@@ -284,7 +322,7 @@ export default function CharacterCreator({ onSave, onCancel, editChar }) {
           <div className="card-title"><span className="icon">✅</span> Review Character</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div><div className="form-label">Name</div><div style={{ fontSize: "18px", fontWeight: 600 }}>{char.name || "Unnamed"}</div></div>
-            <div><div className="form-label">Race</div><div>{raceData.label}{subraceData ? ` (${subraceData.label})` : ""}</div></div>
+            <div><div className="form-label">Race</div><div>{char.race === 'custom' ? (customRaceName || 'Custom Race') : `${raceData.label}${subraceData ? ` (${subraceData.label})` : ""}`}</div></div>
             <div><div className="form-label">Class & Level</div><div>{classData.icon} {classData.label} {char.level}</div></div>
             <div><div className="form-label">Background</div><div>{bgData.label}</div></div>
             <div><div className="form-label">Hit Points</div><div>{computeHP()}</div></div>

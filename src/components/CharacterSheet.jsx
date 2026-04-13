@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   RACES, CLASSES, BACKGROUNDS, ALL_SKILLS, ABILITIES, ABILITY_SHORT,
-  calcMod, modStr, calcProfBonus, genId, rollDice
+  calcMod, modStr, calcProfBonus, calcHP, genId, rollDice
 } from '../lib/gameData'
 import DiceRoller from './DiceRoller'
 
@@ -17,6 +17,21 @@ export default function CharacterSheet({ character, onUpdate, onBack }) {
   const bgData = BACKGROUNDS[char.background] || BACKGROUNDS.acolyte
   const profBonus = calcProfBonus(char.level)
   const allProfs = char.skillProficiencies || []
+  const raceDisplayName = char.race === 'custom' ? (char.subrace || 'Custom Race') : raceData.label
+
+  const changeLevel = (delta) => {
+    const newLevel = Math.max(1, Math.min(20, char.level + delta))
+    if (newLevel === char.level) return
+    const conMod = calcMod(char.abilityScores.constitution)
+    const newMaxHP = calcHP(classData.hitDie, conMod, newLevel)
+    const oldMaxHP = char.hitPoints.max
+    const hpDiff = newMaxHP - oldMaxHP
+    const newCurrentHP = Math.max(1, Math.min(newMaxHP, char.hitPoints.current + hpDiff))
+    updateAndSave({
+      level: newLevel,
+      hitPoints: { ...char.hitPoints, max: newMaxHP, current: newCurrentHP }
+    })
+  }
 
   const updateAndSave = (updates) => {
     const updated = { ...char, ...updates }
@@ -61,9 +76,13 @@ export default function CharacterSheet({ character, onUpdate, onBack }) {
           <div className="sheet-avatar">{classData.icon}</div>
           <div className="sheet-info">
             <div className="sheet-name">{char.name}</div>
-            <div className="sheet-subtitle">Level {char.level} {raceData.label} {classData.label}</div>
+            <div className="sheet-subtitle">Level {char.level} {raceDisplayName} {classData.label}</div>
             <div className="sheet-tags">
-              <span className="tag tag-gold">Lvl {char.level}</span>
+              <span className="tag tag-gold" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <button onClick={() => changeLevel(-1)} disabled={char.level <= 1} style={{ background: "none", border: "none", color: "inherit", cursor: char.level <= 1 ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: 700, padding: 0, lineHeight: 1, opacity: char.level <= 1 ? 0.3 : 1 }}>−</button>
+                Lvl {char.level}
+                <button onClick={() => changeLevel(1)} disabled={char.level >= 20} style={{ background: "none", border: "none", color: "inherit", cursor: char.level >= 20 ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: 700, padding: 0, lineHeight: 1, opacity: char.level >= 20 ? 0.3 : 1 }}>+</button>
+              </span>
               <span className="tag">{bgData.label}</span>
               <span className="tag tag-crimson">Prof +{profBonus}</span>
               {char.playerName && <span className="tag">Player: {char.playerName}</span>}
@@ -159,8 +178,11 @@ export default function CharacterSheet({ character, onUpdate, onBack }) {
             })}
           </div>
           <div style={{ marginTop: "20px" }}>
-            <div className="form-label">Racial Traits</div>
-            {(raceData.traits || []).map((t, i) => <div key={i} className="trait-item">{t}</div>)}
+            <div className="form-label">{char.race === 'custom' ? `${raceDisplayName} Traits` : 'Racial Traits'}</div>
+            {char.race === 'custom'
+              ? <div className="trait-item" style={{ color: "var(--ink-ghost)" }}>Custom race — traits managed by your DM</div>
+              : (raceData.traits || []).map((t, i) => <div key={i} className="trait-item">{t}</div>)
+            }
           </div>
           <div style={{ marginTop: "16px" }}>
             <div className="form-label">Background Feature</div>
