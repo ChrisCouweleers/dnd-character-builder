@@ -2,7 +2,7 @@
 
 A free, web-based D&D 5th Edition character builder. Create characters, roll dice, and manage your party — all saved to the cloud.
 
-**Live at [dnd-char-builder.vercel.app](https://dnd-char-builder.vercel.app)**
+**Live at [dnd-char-builder.vercel.app](https://forge-n-fable.vercel.app)**
 
 ## What It Does
 
@@ -23,7 +23,7 @@ A free, web-based D&D 5th Edition character builder. Create characters, roll dic
 
 ## How to Use
 
-1. Go to [dnd-char-builder.vercel.app](https://dnd-char-builder.vercel.app)
+1. Go to [dnd-char-builder.vercel.app](https://forge-n-fable.vercel.app)
 2. Create a free account with your email
 3. Click **Create Character** and follow the five-step wizard
 4. Open your character sheet to roll checks, track HP, and manage gear during sessions
